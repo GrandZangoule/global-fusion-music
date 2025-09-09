@@ -1,6 +1,4 @@
-.venv/
-__pycache__/
-.ipynb_checkpoints/
-.DS_Store
+# Minimal ignore - keep repo 1:1 with disk
+# (only OS junk)
 Thumbs.db
-audio/*.wav
+.DS_Store
