@@ -833,7 +833,7 @@ with gr.Blocks(
     theme=gr.themes.Soft(),
     fill_height=True,
     show_api=False,          # <— set at construction time
-) as demo
+) as demo:
     demo.show_api = False   # ⬅️ hide /api & skip schema building
     gr.Markdown(f"## {APP_NAME}")
     gr.Markdown(
