@@ -1,5 +1,6 @@
 # ---- CPU Codespaces: stubs to avoid heavy optional deps on import ----
 import os, sys, types
+os.environ.setdefault("GRADIO_DISABLE_API_INFO", "1")
 # xformers: not needed on CPU; audiocraft may import it unconditionally
 os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
 if "xformers" not in sys.modules:
@@ -835,6 +836,7 @@ def generate_music(
 
 # ---- Gradio UI --------------------------------------------------------------
 with gr.Blocks(title=APP_NAME, theme=gr.themes.Soft(), fill_height=True) as demo:
+    demo.show_api = False   # ⬅️ hide /api & skip schema building
     gr.Markdown(f"## {APP_NAME}")
     gr.Markdown(
         "Prompt-to-music using **Meta MusicGen (small)** with optional **melody conditioning**. "
