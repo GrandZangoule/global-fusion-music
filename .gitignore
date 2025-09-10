@@ -1,3 +1,6 @@
 # Minimal ignore - keep repo 1:1 with disk
 Thumbs.db
 .DS_Store
+.venv/
+venvAMD/
+venvNVIDIA/
