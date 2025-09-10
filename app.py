@@ -2,7 +2,7 @@
 # Global Fusion Music – Pro UI with long-form generation (chunking + crossfade)
 # Requires: gradio >= 4.44.1; audiocraft installed; torch/torchaudio installed.
 
-import os, sys
+import os, sys, socket
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "0")
 os.environ["GRADIO_ANALYTICS_ENABLED"] = "0"
 os.environ["GRADIO_MIXPANEL_ENABLED"] = "0"
@@ -1151,12 +1151,51 @@ try:
 except TypeError:
     demo.queue(max_size=8)
 
+def _is_cloud_env() -> bool:
+    """
+    Heuristics to detect 'remote' environments where we must bind to 0.0.0.0
+    (GitHub Codespaces, HF Spaces, many PaaS).
+    """
+    return any([
+        os.getenv("CODESPACES"),
+        os.getenv("GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"),
+        os.getenv("HF_SPACE_ID") or os.getenv("SPACE_ID"),
+        os.getenv("RENDER"),
+        os.getenv("RAILWAY_STATIC_URL"),
+        os.getenv("FLY_APP_NAME"),
+        os.getenv("PORT")  # many hosts set PORT
+    ])
+
+def _pick_port(start=7860, end=7890) -> int:
+    # 1) Respect env override if provided
+    env_port = os.getenv("GRADIO_SERVER_PORT") or os.getenv("PORT")
+    if env_port:
+        try:
+            return int(env_port)
+        except ValueError:
+            pass
+
+    # 2) Otherwise find the first free port in [start, end]
+    bind_host = "0.0.0.0" if _is_cloud_env() else "127.0.0.1"
+    for p in range(start, end + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind((bind_host, p))
+                return p
+            except OSError:
+                continue
+    raise OSError(f"No free port found in range {start}-{end}")
+
 if __name__ == "__main__":
+    PORT = _pick_port()
+    HOST = "0.0.0.0" if _is_cloud_env() else "127.0.0.1"
+
     demo.launch(
         share=False,
-        inbrowser=True,
+        inbrowser=not _is_cloud_env(),  # open browser locally; not in headless containers
         debug=True,
         show_error=True,
-        server_name="127.0.0.1",
-        server_port=7860,
+        server_name=HOST,
+        server_port=PORT,
     )
