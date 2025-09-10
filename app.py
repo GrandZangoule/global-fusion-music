@@ -114,8 +114,10 @@ AUDIO_EXTS = {".wav", ".mp3", ".flac", ".ogg", ".m4a"}
 RECENT_ITEMS: list[tuple[str, str]] = []  # [(audio_path, thumb_path), ...]
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL_NAME = "facebook/musicgen-small"
-MELODY_MODEL = "facebook/musicgen-melody"
+# MODEL_NAME = "facebook/musicgen-small"
+# MELODY_MODEL = "facebook/musicgen-melody"
+MODEL_NAME   = "small"     # was "facebook/musicgen-small"
+MELODY_MODEL = "melody"    # was "facebook/musicgen-melody"
 
 _model_small: Optional[MusicGen] = None
 _model_melody: Optional[MusicGen] = None
@@ -1037,11 +1039,17 @@ with gr.Blocks(
     #   1) status_box (text)  2) audio_out (numpy tuple)  3) file_out (path)
     generate_btn.click(
         fn=generate_music,
-        inputs=[prompt, melody, duration, top_k, temperature, cfg, bpm, style,
-                rhythm, key_root, scale, seed],
-        outputs=[status_box, audio_out, file_out],
-        concurrency_limit=1,          # ✅ replaces the old concurrency_count
-        show_api=False,               # keep/remove as you like
+        inputs=[prompt, melody, duration, top_k, temperature, cfg, bpm, style, rhythm, key_root, scale, seed],
+        outputs=[status_box, audio_out, file_out, meta_out],  # <-- meta_out should be a gr.State() or hidden gr.JSON
+        concurrency_limit=1,
+    ).then(
+    fn=_append_history,
+    inputs=[history_state, meta_out, file_out],
+    outputs=history_state,
+    ).then(
+    fn=_sync_history,
+    inputs=[history_state],
+    outputs=[history_df],
     ).then(
         # After generation finishes, append a history row (no streaming here).
         fn=lambda prompt_val, duration_val, topk_val, temp_val, cfg_val, bpm_val,
