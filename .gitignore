@@ -7,3 +7,6 @@ venvNVIDIA/
 .venv/
 venvAMD/
 venvNVIDIA/
+
+__pycache__/
+*.pyc
