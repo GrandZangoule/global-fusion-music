@@ -1,0 +1,9 @@
+{
+  "name": "gfm-py311",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "postCreateCommand": "sudo apt-get update -y && sudo apt-get install -y ffmpeg libsndfile1 && python -m venv .venv && . .venv/bin/activate && pip install --upgrade pip && ( [ -f requirements.common.txt ] && pip install -r requirements.common.txt || ( [ -f requirements.cpu.txt ] && pip install -r requirements.cpu.txt || pip install -r requirements.txt ) ) && pip install --index-url https://download.pytorch.org/whl/cpu torch==2.1.0 torchaudio==2.1.0 torchvision==0.16.0",
+  "forwardPorts": [7860],
+  "portsAttributes": {
+    "7860": { "label": "Gradio", "onAutoForward": "openBrowser" }
+  }
+}
