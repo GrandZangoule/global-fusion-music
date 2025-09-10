@@ -1,0 +1,9 @@
+{
+  "job_id": "d15947c4fc80",
+  "total_chunks": 1,
+  "next_chunk": 1,
+  "sr": 32000,
+  "chunk_sec": 24.0,
+  "out_dir": "jobs\\d15947c4fc80",
+  "prompt": "Afro Cuban music of the late 70s, 80 BPM Style: Orchestral. Rhythm: Polyrhythm (3:2). Key: C Major. 80 BPM. High quality, rich arrangement, coherent structure."
+}

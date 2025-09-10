@@ -1,0 +1,4 @@
+# Minimal ignore - keep repo 1:1 with disk
+# (only OS junk)
+Thumbs.db
+.DS_Store
