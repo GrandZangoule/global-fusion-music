@@ -1028,7 +1028,6 @@ with gr.Blocks(
             fn=on_preset,                              # on_preset(name) -> returns the 6 outputs
             inputs=gr.State(name),                     # ✅ give on_preset its one argument
             outputs=[style, rhythm, bpm, temperature, cfg, top_k],
-            concurrency_limit=1,                       # ✅ per-handler cap
         )
 
     # NOTE: We call generate_music directly. It streams THREE outputs:
@@ -1037,7 +1036,6 @@ with gr.Blocks(
         fn=generate_music,
         inputs=[prompt, melody, duration, top_k, temperature, cfg, bpm, style, rhythm, key_root, scale, seed],
         outputs=[status_box, audio_out, file_out, meta_out],  # <-- meta_out should be a gr.State() or hidden gr.JSON
-        concurrency_limit=1,
     ).then(
     fn=_append_history,
     inputs=[history_state, meta_out, file_out],
