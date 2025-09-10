@@ -832,9 +832,9 @@ with gr.Blocks(
     title=APP_NAME,
     theme=gr.themes.Soft(),
     fill_height=True,
-    show_api=False,          # <— set at construction time
-) as demo:
-    demo.show_api = False   # ⬅️ hide /api & skip schema building
+) as demo:                       # ← no show_api here
+    # Immediately after the with-block starts:
+    demo.show_api = False            # ← set the attribute, not a kwarg
     gr.Markdown(f"## {APP_NAME}")
     gr.Markdown(
         "Prompt-to-music using **Meta MusicGen (small)** with optional **melody conditioning**. "
