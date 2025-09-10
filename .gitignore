@@ -4,3 +4,6 @@ Thumbs.db
 .venv/
 venvAMD/
 venvNVIDIA/
+.venv/
+venvAMD/
+venvNVIDIA/
