@@ -3,6 +3,7 @@ import os, sys, types
 os.environ.setdefault("GRADIO_DISABLE_API_INFO", "1")
 # xformers: not needed on CPU; audiocraft may import it unconditionally
 os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
+# ---- CPU-only Codespaces: stub xformers so audiocraft 0.0.2 runs without it ----
 if "xformers" not in sys.modules:
     _xf = types.ModuleType("xformers")
     _xf.ops = types.SimpleNamespace()      # audiocraft will fall back without special ops
@@ -18,14 +19,6 @@ if "spacy" not in sys.modules:
     _sp.__version__ = "0.0-stub"
     sys.modules["spacy"] = _sp
 # -------------------------------------------------------------------------------
-# ---- CPU-only Codespaces: stub xformers so audiocraft 0.0.2 runs without it ----
-import os, sys, types
-os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
-if "xformers" not in sys.modules:
-    _xf = types.ModuleType("xformers")
-    _xf.ops = types.SimpleNamespace()
-    sys.modules["xformers"] = _xf
-# ------------------------------------------------------------------------------
 # app.py
 # Global Fusion Music – Pro UI with long-form generation (chunking + crossfade)
 # Requires: gradio >= 4.44.1; audiocraft installed; torch/torchaudio installed.
