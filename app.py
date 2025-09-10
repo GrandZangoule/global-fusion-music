@@ -834,7 +834,6 @@ def generate_music(
 with gr.Blocks(
     title=APP_NAME,
     theme=gr.themes.Soft(),
-    fill_height=True,
 ) as demo:
     # hide the API docs UI
     demo.show_api = False
@@ -894,14 +893,10 @@ with gr.Blocks(
             status_box = gr.Textbox(label="Status", interactive=False)
 
             # Output player: numpy; allow drag & drop of audio files
-            audio_out = gr.Audio(label="🔊 Output", type="numpy", interactive=True, sources=["upload"])
+            audio_out = gr.Audio(label="🔊 Output", type="numpy", interactive=False)
 
             # Optional: user can drop/select any audio file here to preview in Output
-            file_out = gr.File(
-                label="Load an audio file (drag/drop a .wav here)",
-                file_types=["audio"],
-                type="filepath"
-            )
+            file_out = gr.File(label="Download", type="file")
 
             # --- Column-local callbacks ----------------------------------
             def _play_any_audio_file(path_str: str):
