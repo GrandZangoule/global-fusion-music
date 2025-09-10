@@ -1218,10 +1218,11 @@ if __name__ == "__main__":
     HOST = "0.0.0.0" if _is_cloud_env() else "127.0.0.1"
 
     demo.launch(
-        share=False,
-        inbrowser=not _is_cloud_env(),  # open browser locally; not in headless containers
+        share=True,            # <-- add this in Codespaces/remote
+        inbrowser=False,       # don't try to open a local browser tab
         debug=True,
         show_error=True,
+        show_api=False,        # see #2 below; avoids schema crash path
         server_name=HOST,
         server_port=PORT,
     )
