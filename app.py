@@ -832,9 +832,16 @@ with gr.Blocks(
     title=APP_NAME,
     theme=gr.themes.Soft(),
     fill_height=True,
-) as demo:                       # ← no show_api here
-    # Immediately after the with-block starts:
-    demo.show_api = False            # ← set the attribute, not a kwarg
+) as demo:
+    # hide the API docs UI
+    demo.show_api = False
+
+    # --- Workaround: bypass API schema building (gradio-client 1.3.0 bug) ---
+    def _no_api_info():
+        # minimal structure expected by Gradio; prevents schema conversion
+        return {"named_endpoints": {}, "unnamed_endpoints": []}
+    demo.get_api_info = _no_api_info
+    # -----------------------------------------------------------------------
     gr.Markdown(f"## {APP_NAME}")
     gr.Markdown(
         "Prompt-to-music using **Meta MusicGen (small)** with optional **melody conditioning**. "
