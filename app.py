@@ -2,12 +2,13 @@
 import os, sys, types
 os.environ.setdefault("GRADIO_DISABLE_API_INFO", "1")
 # xformers: not needed on CPU; audiocraft may import it unconditionally
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")      # force CPU
 os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
 # ---- CPU-only Codespaces: stub xformers so audiocraft 0.0.2 runs without it ----
-if "xformers" not in sys.modules:
-    _xf = types.ModuleType("xformers")
-    _xf.ops = types.SimpleNamespace()      # audiocraft will fall back without special ops
-    sys.modules["xformers"] = _xf
+#if "xformers" not in sys.modules:
+#    _xf = types.ModuleType("xformers")
+#    _xf.ops = types.SimpleNamespace()      # audiocraft will fall back without special ops
+#    sys.modules["xformers"] = _xf
 
 # spaCy: imported by audiocraft.conditioners, but not needed unless you use the spaCy tokenizer.
 # Provide a tiny placeholder so import succeeds. If code actually calls into spaCy, we raise.
