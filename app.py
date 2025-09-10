@@ -828,7 +828,12 @@ def generate_music(
 
 
 # ---- Gradio UI --------------------------------------------------------------
-with gr.Blocks(title=APP_NAME, theme=gr.themes.Soft(), fill_height=True) as demo:
+with gr.Blocks(
+    title=APP_NAME,
+    theme=gr.themes.Soft(),
+    fill_height=True,
+    show_api=False,          # <— set at construction time
+) as demo
     demo.show_api = False   # ⬅️ hide /api & skip schema building
     gr.Markdown(f"## {APP_NAME}")
     gr.Markdown(
