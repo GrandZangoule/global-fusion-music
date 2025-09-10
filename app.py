@@ -1,3 +1,30 @@
+# ---- CPU Codespaces: stubs to avoid heavy optional deps on import ----
+import os, sys, types
+# xformers: not needed on CPU; audiocraft may import it unconditionally
+os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
+if "xformers" not in sys.modules:
+    _xf = types.ModuleType("xformers")
+    _xf.ops = types.SimpleNamespace()      # audiocraft will fall back without special ops
+    sys.modules["xformers"] = _xf
+
+# spaCy: imported by audiocraft.conditioners, but not needed unless you use the spaCy tokenizer.
+# Provide a tiny placeholder so import succeeds. If code actually calls into spaCy, we raise.
+if "spacy" not in sys.modules:
+    _sp = types.ModuleType("spacy")
+    def _not_available(*a, **k):
+        raise ImportError("spaCy is not available in this environment (stub).")
+    _sp.load = _not_available
+    _sp.__version__ = "0.0-stub"
+    sys.modules["spacy"] = _sp
+# -------------------------------------------------------------------------------
+# ---- CPU-only Codespaces: stub xformers so audiocraft 0.0.2 runs without it ----
+import os, sys, types
+os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
+if "xformers" not in sys.modules:
+    _xf = types.ModuleType("xformers")
+    _xf.ops = types.SimpleNamespace()
+    sys.modules["xformers"] = _xf
+# ------------------------------------------------------------------------------
 # app.py
 # Global Fusion Music – Pro UI with long-form generation (chunking + crossfade)
 # Requires: gradio >= 4.44.1; audiocraft installed; torch/torchaudio installed.
@@ -993,20 +1020,21 @@ with gr.Blocks(title=APP_NAME, theme=gr.themes.Soft(), fill_height=True) as demo
 
     for btn, name in zip(preset_btns, PRESETS.keys()):
         btn.click(
-            on_preset,
-            inputs=[],
+            fn=on_preset,                              # on_preset(name) -> returns the 6 outputs
+            inputs=gr.State(name),                     # ✅ give on_preset its one argument
             outputs=[style, rhythm, bpm, temperature, cfg, top_k],
+            concurrency_limit=1,                       # ✅ per-handler cap
         )
 
     # NOTE: We call generate_music directly. It streams THREE outputs:
     #   1) status_box (text)  2) audio_out (numpy tuple)  3) file_out (path)
     generate_btn.click(
         fn=generate_music,
-        inputs=[prompt, melody, duration, top_k, temperature, cfg, bpm, style, rhythm, key_root, scale, seed],
+        inputs=[prompt, melody, duration, top_k, temperature, cfg, bpm, style,
+                rhythm, key_root, scale, seed],
         outputs=[status_box, audio_out, file_out],
-        concurrency_limit=1,
-        show_api=False,
-        queue=True,
+        concurrency_limit=1,          # ✅ replaces the old concurrency_count
+        show_api=False,               # keep/remove as you like
     ).then(
         # After generation finishes, append a history row (no streaming here).
         fn=lambda prompt_val, duration_val, topk_val, temp_val, cfg_val, bpm_val,
@@ -1146,10 +1174,8 @@ with gr.Blocks(title=APP_NAME, theme=gr.themes.Soft(), fill_height=True) as demo
     
 
 # Stable queue: one worker; frequent status updates to keep WS alive
-try:
-    demo.queue(concurrency_count=1, max_size=8, status_update_rate=1)
-except TypeError:
-    demo.queue(max_size=8)
+# Enable global queue (Gradio ≥ 4.x)
+demo.queue(max_size=8, status_update_rate=1)
 
 def _is_cloud_env() -> bool:
     """
