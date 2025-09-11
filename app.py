@@ -9,6 +9,30 @@ os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
 #    _xf = types.ModuleType("xformers")
 #    _xf.ops = types.SimpleNamespace()      # audiocraft will fall back without special ops
 #    sys.modules["xformers"] = _xf
+# provide a tiny xformers.ops shim that Audiocraft can import
+if "xformers" not in sys.modules:
+    _xf = types.ModuleType("xformers")
+
+    def _sdpa(q, k, v, attn_bias=None, p: float = 0.0, scale=None, **kwargs):
+        import torch
+        import torch.nn.functional as F
+        if scale is None:
+            scale = q.shape[-1] ** -0.5
+        scores = (q @ k.transpose(-2, -1)) * scale
+        if attn_bias is not None:
+            scores = scores + attn_bias
+        if p and p > 0:
+            scores = F.dropout(scores, p, training=False)
+        w = scores.softmax(dim=-1)
+        return w @ v
+
+    ops = types.SimpleNamespace(
+        memory_efficient_attention=_sdpa,
+        scaled_dot_product_efficient_attention=_sdpa,
+    )
+
+    _xf.ops = ops
+    sys.modules["xformers"] = _xf
 
 # spaCy: imported by audiocraft.conditioners, but not needed unless you use the spaCy tokenizer.
 # Provide a tiny placeholder so import succeeds. If code actually calls into spaCy, we raise.
