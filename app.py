@@ -159,6 +159,40 @@ def _load_melody() -> MusicGen:
             _move_musicgen_to_device(_model_melody)
     return _model_melody
 
+def _resolve_path(file_obj):
+    # gr.File can be str, tempfile, or dict in 4.x
+    if isinstance(file_obj, dict):
+        return file_obj.get("name") or file_obj.get("path") or ""
+    if hasattr(file_obj, "name"):
+        return str(file_obj.name)
+    return str(file_obj or "")
+
+def _append_history(hist, meta, file_obj):
+    """hist: list[dict], meta: dict, file_obj: gr.File return."""
+    hist = hist or []
+    path = _resolve_path(file_obj)
+    row = {
+        "time": dt.datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "prompt": (meta or {}).get("prompt", ""),
+        "duration": (meta or {}).get("duration", ""),
+        "seed": (meta or {}).get("seed", ""),
+        "file": path,
+    }
+    return hist + [row]   # returns the *new state* only
+
+def _sync_history(hist):
+    """Return values for UI widgets fed from history_state."""
+    # Return for the dataframe:
+    table_rows = [[r.get("time",""), r.get("prompt",""), r.get("duration",""),
+                   r.get("seed",""), r.get("file","")] for r in (hist or [])]
+
+    # If you also have a gallery, convert to (path, caption)
+    # gallery = [(r.get("file",""), r.get("prompt","")) for r in (hist or [])]
+    # return table_rows, gallery
+
+    return table_rows
+
+
  # ------------------------------------------------------------------------------- 
 
 JOBS_DIR = Path("jobs"); JOBS_DIR.mkdir(exist_ok=True, parents=True)
@@ -1012,7 +1046,11 @@ with gr.Blocks(
     # ---- State + Callbacks ----
     state_hist = gr.State([])  # keep as a Python list (not a DataFrame)
 
-    meta_out   = gr.JSON(label="Meta", visible=False)   # or: gr.State()
+    # meta_out   = gr.JSON(label="Meta", visible=False)   # or: gr.State()
+    meta_out   = gr.State({})               # or: gr.JSON(visible=False)
+    history_state = gr.State([])               # list of dict rows
+    history_df = gr.Dataframe(headers=["time","prompt","duration","seed","file"],
+                                interactive=False)
 
     def on_preset(name: str):
         conf = PRESETS.get(name, {})
@@ -1037,15 +1075,15 @@ with gr.Blocks(
     generate_btn.click(
         fn=generate_music,
         inputs=[prompt, melody, duration, top_k, temperature, cfg, bpm, style, rhythm, key_root, scale, seed],
-        outputs=[status_box, audio_out, file_out, meta_out],  # <-- meta_out should be a gr.State() or hidden gr.JSON
+        outputs=[status_box, audio_out, file_out, meta_out],
     ).then(
-    fn=_append_history,
-    inputs=[history_state, meta_out, file_out],
-    outputs=history_state,
+        fn=_append_history,
+        inputs=[history_state, meta_out, file_out],
+        outputs=history_state,                      # returns only the new state
     ).then(
-    fn=_sync_history,
-    inputs=[history_state],
-    outputs=[history_df],
+        fn=_sync_history,
+        inputs=[history_state],
+        outputs=[history_df],                       # or [history_df, history_gallery]
     ).then(
         # After generation finishes, append a history row (no streaming here).
         fn=lambda prompt_val, duration_val, topk_val, temp_val, cfg_val, bpm_val,
