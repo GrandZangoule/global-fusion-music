@@ -1212,7 +1212,6 @@ with gr.Blocks(
             inputs=[mix_df, bpm_xfade, xfade_beats],
             outputs=[mix_status, mix_audio, mix_file],
             queue=True,
-            show_api=False,
         ).then(
             fn=lambda: recent_gallery_data(),
             inputs=None,
