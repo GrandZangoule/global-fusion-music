@@ -1012,6 +1012,8 @@ with gr.Blocks(
     # ---- State + Callbacks ----
     state_hist = gr.State([])  # keep as a Python list (not a DataFrame)
 
+    meta_out   = gr.JSON(label="Meta", visible=False)   # or: gr.State()
+
     def on_preset(name: str):
         conf = PRESETS.get(name, {})
         return (
