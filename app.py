@@ -10,38 +10,45 @@ os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
 #    _xf.ops = types.SimpleNamespace()      # audiocraft will fall back without special ops
 #    sys.modules["xformers"] = _xf
 # provide a tiny xformers.ops shim that Audiocraft can import
-if "xformers" not in sys.modules:
-    xf_mod  = types.ModuleType("xformers")
-    ops_mod = types.ModuleType("xformers.ops")
+def _install_xformers_ops_shim():
+    xf = sys.modules.get("xformers") or types.ModuleType("xformers")
+    ops = types.ModuleType("xformers.ops")
 
-    # minimal SDPA fallback that matches xformers.ops API
+    # Minimal SDPA that matches the xformers.ops API Audiocraft calls.
     def _sdpa(q, k, v, attn_bias=None, p: float = 0.0, scale=None, **kwargs):
         import torch
         import torch.nn.functional as F
         if scale is None:
-            # inverse sqrt(d_k)
             scale = q.shape[-1] ** -0.5
-        scores = torch.matmul(q, k.transpose(-2, -1)) * scale
+        scores = q @ k.transpose(-2, -1) * scale
         if attn_bias is not None:
             scores = scores + attn_bias
         if p and p > 0:
             scores = F.dropout(scores, p, training=False)
-        weights = torch.softmax(scores, dim=-1)
-        return torch.matmul(weights, v)
+        weights = scores.softmax(dim=-1)
+        return weights @ v
 
-    # audiocraft also imports this symbol; a dummy class is fine here
     class LowerTriangularMask:
         def __init__(self, *a, **k): pass
 
-    # publish the symbols on the ops module
-    ops_mod.memory_efficient_attention = _sdpa
-    ops_mod.scaled_dot_product_efficient_attention = _sdpa
-    ops_mod.LowerTriangularMask = LowerTriangularMask
+    ops.memory_efficient_attention = _sdpa
+    ops.scaled_dot_product_efficient_attention = _sdpa  # some versions use this name
+    ops.LowerTriangularMask = LowerTriangularMask
 
-    # wire up the module hierarchy
-    xf_mod.ops = ops_mod
-    sys.modules["xformers"] = xf_mod
-    sys.modules["xformers.ops"] = ops_mod
+    xf.ops = ops
+    sys.modules["xformers"] = xf
+    sys.modules["xformers.ops"] = ops
+
+# If xformers.ops is missing or broken, install the shim.
+use_shim = False
+try:
+    import xformers.ops as _xo  # noqa: F401
+except Exception:
+    use_shim = True
+
+if use_shim:
+    _install_xformers_ops_shim()
+# -------------------------------------------------------------------------------
 
 # spaCy: imported by audiocraft.conditioners, but not needed unless you use the spaCy tokenizer.
 # Provide a tiny placeholder so import succeeds. If code actually calls into spaCy, we raise.
