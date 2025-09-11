@@ -11,6 +11,10 @@ os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
 #    sys.modules["xformers"] = _xf
 # provide a tiny xformers.ops shim that Audiocraft can import
 def _install_xformers_ops_shim():
+    """
+    Provide a tiny 'xformers.ops' module that exposes the minimal API
+    Audiocraft/MusicGen expects when real xformers isn't available.
+    """
     xf = sys.modules.get("xformers") or types.ModuleType("xformers")
     ops = types.ModuleType("xformers.ops")
 
@@ -24,31 +28,61 @@ def _install_xformers_ops_shim():
         if attn_bias is not None:
             scores = scores + attn_bias
         if p and p > 0:
+            # keep dropout deterministic/off by default in inference
             scores = F.dropout(scores, p, training=False)
         weights = scores.softmax(dim=-1)
         return weights @ v
 
+    # Some Audiocraft versions import this symbol from xformers.ops
     class LowerTriangularMask:
-        def __init__(self, *a, **k): pass
+        def __init__(self, *a, **k):
+            pass
 
+    # Populate the ops module with the minimal surface
     ops.memory_efficient_attention = _sdpa
-    ops.scaled_dot_product_efficient_attention = _sdpa  # some versions use this name
+    # Older/newer Audiocraft may use this alt name:
+    ops.scaled_dot_product_efficient_attention = _sdpa
+
+    # Newer Audiocraft uses ops.unbind in some paths — provide a passthrough.
+    def _unbind(x, dim: int = -1):
+        import torch
+        return torch.unbind(x, dim)
+    ops.unbind = _unbind
+
+    # (Optional) keep a symbol around so "from xformers.ops import LowerTriangularMask" works
     ops.LowerTriangularMask = LowerTriangularMask
 
+    # Install into sys.modules so normal imports succeed
     xf.ops = ops
     sys.modules["xformers"] = xf
     sys.modules["xformers.ops"] = ops
 
-# If xformers.ops is missing or broken, install the shim.
-use_shim = False
+# If xformers.ops is missing or lacks the attributes we need, install the shim.
+need_shim = False
 try:
     import xformers.ops as _xo  # noqa: F401
+    for _name in ("memory_efficient_attention", "scaled_dot_product_efficient_attention", "unbind"):
+        if not hasattr(_xo, _name):
+            need_shim = True
+            break
 except Exception:
-    use_shim = True
+    need_shim = True
 
-if use_shim:
+if need_shim:
     _install_xformers_ops_shim()
-# -------------------------------------------------------------------------------
+
+# ---- Optional: tiny spaCy stub so Audiocraft's optional import won't fail ---
+try:
+    import spacy  # noqa: F401
+except Exception:
+    if "spacy" not in sys.modules:
+        _sp = types.ModuleType("spacy")
+        def _not_available(*a, **k):
+            raise ImportError("spaCy is not available in this environment (stub).")
+        _sp.load = _not_available
+        _sp.__version__ = "0.0-stub"
+        sys.modules["spacy"] = _sp
+# ------------------------------------------------------------------------------------
 
 # spaCy: imported by audiocraft.conditioners, but not needed unless you use the spaCy tokenizer.
 # Provide a tiny placeholder so import succeeds. If code actually calls into spaCy, we raise.
