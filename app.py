@@ -11,28 +11,37 @@ os.environ.setdefault("AUDIOCRAFT_DISABLE_XFORMERS", "1")
 #    sys.modules["xformers"] = _xf
 # provide a tiny xformers.ops shim that Audiocraft can import
 if "xformers" not in sys.modules:
-    _xf = types.ModuleType("xformers")
+    xf_mod  = types.ModuleType("xformers")
+    ops_mod = types.ModuleType("xformers.ops")
 
+    # minimal SDPA fallback that matches xformers.ops API
     def _sdpa(q, k, v, attn_bias=None, p: float = 0.0, scale=None, **kwargs):
         import torch
         import torch.nn.functional as F
         if scale is None:
+            # inverse sqrt(d_k)
             scale = q.shape[-1] ** -0.5
-        scores = (q @ k.transpose(-2, -1)) * scale
+        scores = torch.matmul(q, k.transpose(-2, -1)) * scale
         if attn_bias is not None:
             scores = scores + attn_bias
         if p and p > 0:
             scores = F.dropout(scores, p, training=False)
-        w = scores.softmax(dim=-1)
-        return w @ v
+        weights = torch.softmax(scores, dim=-1)
+        return torch.matmul(weights, v)
 
-    ops = types.SimpleNamespace(
-        memory_efficient_attention=_sdpa,
-        scaled_dot_product_efficient_attention=_sdpa,
-    )
+    # audiocraft also imports this symbol; a dummy class is fine here
+    class LowerTriangularMask:
+        def __init__(self, *a, **k): pass
 
-    _xf.ops = ops
-    sys.modules["xformers"] = _xf
+    # publish the symbols on the ops module
+    ops_mod.memory_efficient_attention = _sdpa
+    ops_mod.scaled_dot_product_efficient_attention = _sdpa
+    ops_mod.LowerTriangularMask = LowerTriangularMask
+
+    # wire up the module hierarchy
+    xf_mod.ops = ops_mod
+    sys.modules["xformers"] = xf_mod
+    sys.modules["xformers.ops"] = ops_mod
 
 # spaCy: imported by audiocraft.conditioners, but not needed unless you use the spaCy tokenizer.
 # Provide a tiny placeholder so import succeeds. If code actually calls into spaCy, we raise.
