@@ -1211,7 +1211,6 @@ with gr.Blocks(
             fn=build_mixtape_ui,
             inputs=[mix_df, bpm_xfade, xfade_beats],
             outputs=[mix_status, mix_audio, mix_file],
-            concurrency_limit=1,
             queue=True,
             show_api=False,
         ).then(
